@@ -1,0 +1,13 @@
+name = "LaTeXTools"
+uuid = "1d6c6f8d-3e0f-4f0f-9d1c-0b0d3c6d7a11"
+authors = ["dwd31415"]
+version = "0.1.0"
+
+[compat]
+julia = "1.9"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

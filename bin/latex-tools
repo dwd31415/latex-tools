@@ -1,0 +1,48 @@
+#!/usr/bin/env julia
+
+using LaTeXTools
+
+function usage()
+    println("""
+    Usage: latex-tools MAIN.tex [-o OUTPUT.tex] [--bib INPUT.bib] [--bib-output OUTPUT.bib]
+
+    Remove comments, recursively inline \\\\input/\\\\include files, and optionally
+    remove uncited BibTeX entries.
+    """)
+end
+
+function main(args)
+    isempty(args) && (usage(); return 1)
+    input = args[1]
+    output = nothing
+    bib = nothing
+    bib_output = nothing
+    index = 2
+    while index <= length(args)
+        option = args[index]
+        option == "-o" || option == "--output" || option == "--bib" || option == "--bib-output" ||
+            error("Unknown option: $option")
+        index == length(args) && error("Missing value for $option")
+        value = args[index + 1]
+        if option == "--bib"
+            bib = value
+        elseif option == "--bib-output"
+            bib_output = value
+        else
+            output = value
+        end
+        index += 2
+    end
+    output = something(output, replace(input, r"\.tex$" => "") * "-inlined.tex")
+    result = process_document(input; output, bibliography=bib, bibliography_output=bib_output)
+    println("Wrote $(result.tex)")
+    !isnothing(result.bib) && println("Wrote $(result.bib)")
+    return 0
+end
+
+try
+    exit(main(ARGS))
+catch error
+    println(stderr, "latex-tools: ", error)
+    exit(1)
+end

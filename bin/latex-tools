@@ -4,7 +4,8 @@ using LaTeXTools
 
 function usage()
     println("""
-    Usage: latex-tools MAIN.tex [-o OUTPUT.tex] [--bib INPUT.bib] [--bib-output OUTPUT.bib]
+    Usage: latex-tools MAIN.tex [-o OUTPUT.tex] [--output-folder FOLDER]
+        [--bib INPUT.bib] [--bib-output OUTPUT.bib]
 
     Remove comments, recursively inline \\\\input/\\\\include files, and optionally
     remove uncited BibTeX entries.
@@ -17,10 +18,12 @@ function main(args)
     output = nothing
     bib = nothing
     bib_output = nothing
+    output_folder = nothing
     index = 2
     while index <= length(args)
         option = args[index]
-        option == "-o" || option == "--output" || option == "--bib" || option == "--bib-output" ||
+        option == "-o" || option == "--output" || option == "--output-folder" ||
+            option == "--bib" || option == "--bib-output" ||
             error("Unknown option: $option")
         index == length(args) && error("Missing value for $option")
         value = args[index + 1]
@@ -28,13 +31,16 @@ function main(args)
             bib = value
         elseif option == "--bib-output"
             bib_output = value
+        elseif option == "--output-folder"
+            output_folder = value
         else
             output = value
         end
         index += 2
     end
     output = something(output, replace(input, r"\.tex$" => "") * "-inlined.tex")
-    result = process_document(input; output, bibliography=bib, bibliography_output=bib_output)
+    result = process_document(input; output, bibliography=bib,
+                              bibliography_output=bib_output, output_folder)
     println("Wrote $(result.tex)")
     !isnothing(result.bib) && println("Wrote $(result.bib)")
     return 0

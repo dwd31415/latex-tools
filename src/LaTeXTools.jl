@@ -23,7 +23,7 @@ function remove_comments(text::AbstractString)
                 escaped = false
             end
         end
-        isnothing(cut) ? line : line[begin:prevind(line, cut)]
+        isnothing(cut) ? line : line[begin:prevind(line, cut)] * "% "
     end, '\n')
 end
 

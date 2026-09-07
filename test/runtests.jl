@@ -23,6 +23,15 @@ using LaTeXTools
         @test read(result.tex, String) == "\\includegraphics[width=\\textwidth]{figure.png}\n"
         @test read(joinpath(output_folder, "figure.png"), String) == "figure data"
 
+        included_directory = joinpath(directory, "sections")
+        mkpath(included_directory)
+        write(joinpath(included_directory, "part.tex"), "\\includegraphics{figure}\n")
+        write(main, "\\input{sections/part}\n")
+        nested_result = process_document(main; output=joinpath(directory, "nested.tex"),
+                                         output_folder=joinpath(directory, "nested-output"))
+        @test occursin("\\includegraphics{figure.png}", read(nested_result.tex, String))
+        @test collect_dependencies(main) == Set([main, joinpath(included_directory, "part.tex")])
+
         bib = "@article{used,\n  title = {Used}\n}\n@article{unused,\n  title = {Unused}\n}\n"
         @test occursin("@article{used", clean_bibliography(bib, Set(["used"])))
         @test !occursin("@article{unused", clean_bibliography(bib, Set(["used"])))

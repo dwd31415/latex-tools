@@ -4,7 +4,12 @@ using LaTeXTools
 
 function usage()
     println("""
+    Prepare self-contained LaTeX documents by inlining included files,
+    optionally copying figures, cleaning bibliographies, or watching and
+    rebuilding documents automatically.
+
     Usage: latex-tools MAIN.tex [-o OUTPUT.tex] [--output-folder FOLDER]
+        [--autobuild BUILD_DIR]
         [--bib INPUT.bib] [--bib-output OUTPUT.bib]
 
     Remove comments, recursively inline \\\\input/\\\\include files, and optionally
@@ -19,10 +24,12 @@ function main(args)
     bib = nothing
     bib_output = nothing
     output_folder = nothing
+    autobuild_directory = nothing
     index = 2
     while index <= length(args)
         option = args[index]
         option == "-o" || option == "--output" || option == "--output-folder" ||
+            option == "--autobuild" ||
             option == "--bib" || option == "--bib-output" ||
             error("Unknown option: $option")
         index == length(args) && error("Missing value for $option")
@@ -33,11 +40,15 @@ function main(args)
             bib_output = value
         elseif option == "--output-folder"
             output_folder = value
+        elseif option == "--autobuild"
+            autobuild_directory = value
         else
             output = value
         end
         index += 2
     end
+    !isnothing(autobuild_directory) &&
+        return autobuild(input, autobuild_directory)
     output = something(output, replace(input, r"\.tex$" => "") * "-inlined.tex")
     result = process_document(input; output, bibliography=bib,
                               bibliography_output=bib_output, output_folder)

@@ -222,9 +222,10 @@ function _run_build_command(command, label; source_name=nothing)
     return success
 end
 
-function _build(input_path, build_directory, bibliography)
+function _build(input_path, build_directory, bibliography, max_print_line)
     pdflatex = Cmd(["pdflatex", "-interaction=nonstopmode", "-halt-on-error",
                     "-file-line-error", "-output-directory=$(build_directory)",
+                    "-cnf-line=max_print_line=$(max_print_line)",
                     basename(input_path)])
     pdflatex = setenv(pdflatex, dir=dirname(input_path))
     _run_build_command(pdflatex, "Building $(basename(input_path))";
@@ -241,13 +242,14 @@ function _build(input_path, build_directory, bibliography)
 end
 
 """Build a document and rebuild it whenever its TeX or bibliography dependencies change."""
-function autobuild(input::AbstractString, build_directory::AbstractString; interval=1.0)
+function autobuild(input::AbstractString, build_directory::AbstractString;
+                   interval=1.0, max_print_line=displaysize(stdout)[2])
     input_path = abspath(input)
     build_directory = abspath(build_directory)
     mkpath(build_directory)
     dependencies = collect_dependencies(input_path)
     bibliography = any(endswith(path, ".bib") for path in dependencies)
-    _build(input_path, build_directory, bibliography) ||
+    _build(input_path, build_directory, bibliography, max_print_line) ||
         error("Initial LaTeX build failed")
     snapshots = Dict(path => stat(path).mtime for path in dependencies)
     println(ANSI_GREEN, "Watching $(length(dependencies)) file(s) for changes", ANSI_RESET)
@@ -260,7 +262,7 @@ function autobuild(input::AbstractString, build_directory::AbstractString; inter
         if changed
             dependencies = current_dependencies
             bibliography = any(endswith(path, ".bib") for path in dependencies)
-            _build(input_path, build_directory, bibliography) ||
+            _build(input_path, build_directory, bibliography, max_print_line) ||
                 println(ANSI_RED, "LaTeX build failed; continuing to watch", ANSI_RESET)
             snapshots = Dict(path => stat(path).mtime for path in dependencies)
         end

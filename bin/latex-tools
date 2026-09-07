@@ -48,7 +48,8 @@ function main(args)
         index += 2
     end
     !isnothing(autobuild_directory) &&
-        return autobuild(input, autobuild_directory)
+        return autobuild(input, autobuild_directory;
+                         max_print_line=displaysize(stdout)[2])
     output = something(output, replace(input, r"\.tex$" => "") * "-inlined.tex")
     result = process_document(input; output, bibliography=bib,
                               bibliography_output=bib_output, output_folder)

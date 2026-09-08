@@ -13,6 +13,17 @@ using LaTeXTools
         process_document(main; output)
         @test read(output, String) == "\\documentclass{article}\nPart % \n\\cite{used}\n"
 
+        write(main, "\\input{definitely-missing-latex-tools-file}\n")
+        @test_throws ErrorException process_document(main; output)
+
+        kpsewhich_file = strip(read(`kpsewhich latex.ltx`, String))
+        if !isempty(kpsewhich_file)
+            write(main, "\\input{latex.ltx}\n")
+            process_document(main; output)
+            @test read(output, String) == "\\input{latex.ltx}\n"
+            @test collect_dependencies(main) == Set([main])
+        end
+
         figure = joinpath(directory, "figure.png")
         write(figure, "figure data")
         write(main, "\\includegraphics[width=\\textwidth]{figure}\n")

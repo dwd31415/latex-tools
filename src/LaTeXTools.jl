@@ -36,9 +36,15 @@ end
 
 function _resolve_tex(path, base)
     candidate = isabspath(path) ? path : joinpath(base, path)
-    isfile(candidate) && return candidate
+    isfile(candidate) && return (path=candidate, status=:local)
     endswith(candidate, ".tex") || (candidate *= ".tex")
-    return candidate
+    isfile(candidate) && return (path=candidate, status=:local)
+
+    lookup = Cmd(["kpsewhich", path])
+    success(lookup) || return (path=nothing, status=:missing)
+    isempty(strip(read(lookup, String))) &&
+        return (path=nothing, status=:missing)
+    return (path=nothing, status=:external)
 end
 
 function _resolve_figure(path, base)
@@ -64,8 +70,10 @@ function _collect_dependencies(text, source_path, dependencies, visited)
     source_dir = dirname(source_path)
     for match in eachmatch(INPUT_COMMAND, text)
         included = _resolve_tex(match.captures[2], source_dir)
-        isfile(included) || error("Included TeX file not found: $(match.captures[2]) (from $(source_path))")
-        _collect_dependencies(read(included, String), included, dependencies, visited)
+        included.status == :missing &&
+            error("Included TeX file not found: $(match.captures[2]) (from $(source_path))")
+        included.status == :local &&
+            _collect_dependencies(read(included.path, String), included.path, dependencies, visited)
     end
     for pattern in (BIB_RESOURCE, BIB_COMMAND)
         for match in eachmatch(pattern, text)
@@ -111,10 +119,14 @@ function _inline(text, source_path, stack; figures=nothing, figure_names=nothing
     return replace(processed, INPUT_COMMAND => m -> begin
         requested = match(INPUT_COMMAND, m).captures[2]
         included = _resolve_tex(requested, source_dir)
-        isfile(included) || error("Included TeX file not found: $(requested) (from $(source_path))")
-        included in stack && error("Cyclic TeX include detected: $(join([stack; included], " -> "))")
-        child = remove_comments(read(included, String))
-        _inline(child, included, [stack; included]; figures, figure_names, figure_base)
+        included.status == :missing &&
+            error("Included TeX file not found: $(requested) (from $(source_path))")
+        included.status == :external &&
+            return m
+        included.path in stack &&
+            error("Cyclic TeX include detected: $(join([stack; included.path], " -> "))")
+        child = remove_comments(read(included.path, String))
+        _inline(child, included.path, [stack; included.path]; figures, figure_names, figure_base)
     end)
 end
 
@@ -233,7 +245,15 @@ function _build(input_path, build_directory, bibliography, max_print_line)
     if bibliography
         document_name, _ = splitext(basename(input_path))
         bibtex = Cmd(["bibtex", document_name])
-        _run_build_command(setenv(bibtex, dir=build_directory), "Running bibtex";
+        path_separator = Sys.iswindows() ? ';' : ':'
+        bibtex_search_path = join((dirname(input_path), build_directory,
+                                   get(ENV, "BIBINPUTS", "")), path_separator)
+        bst_search_path = join((dirname(input_path), build_directory,
+                                get(ENV, "BSTINPUTS", "")), path_separator)
+        bibtex = addenv(bibtex, "BIBINPUTS" => bibtex_search_path,
+                        "BSTINPUTS" => bst_search_path; inherit=true)
+        _run_build_command(setenv(bibtex; dir=build_directory),
+                           "Running bibtex";
                            source_name=basename(input_path)) || return false
         _run_build_command(pdflatex, "Rebuilding $(basename(input_path))";
                            source_name=basename(input_path)) || return false

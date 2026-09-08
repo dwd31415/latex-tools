@@ -22,8 +22,10 @@ Build output and errors are printed with color-coded diagnostics. Stop
 watching with Ctrl-C.
 
 The input file is never modified. Included files are resolved relative to the
-file that references them, and missing or cyclic includes are reported as
-errors. Citation keys from common `\cite`-style commands are used when
+file that references them. If a relative include is not present there,
+`kpsewhich` is checked; files found only through its search path are left as
+`\input`/`\include` commands, while unresolved or cyclic includes are reported
+as errors. Citation keys from common `\cite`-style commands are used when
 cleaning the bibliography.
 
 Run tests with:
